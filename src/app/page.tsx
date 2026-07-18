@@ -1,14 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { useTournament } from "@/hooks/useTournament";
 import { BracketView } from "@/components/BracketView";
+import { FormalBracket } from "@/components/FormalBracket";
 import { ChampionBanner } from "@/components/Champion";
 import { postClear, postResult } from "@/lib/client";
 import { Kicker } from "@/components/ui";
 
 export default function Home() {
   const { view, error, loading, apply } = useTournament();
+  const [mode, setMode] = useState<"list" | "bracket">("list");
 
   async function onSubmit(
     gameId: string,
@@ -80,11 +83,43 @@ export default function Home() {
           )}
 
           {view.phase !== "setup" && (
-            <BracketView
-              games={view.games}
-              onSubmit={onSubmit}
-              onClear={onClear}
-            />
+            <div>
+              {/* List vs formal-bracket view toggle */}
+              <div className="flex justify-center mb-5">
+                <div className="inline-flex rounded-sm border border-cream-300 overflow-hidden">
+                  <button
+                    onClick={() => setMode("list")}
+                    className={`px-5 py-2 min-h-[40px] text-xs tracking-widest uppercase transition-colors ${
+                      mode === "list"
+                        ? "bg-blue-600 text-white"
+                        : "bg-white text-charcoal-500 hover:bg-cream-100"
+                    }`}
+                  >
+                    Score
+                  </button>
+                  <button
+                    onClick={() => setMode("bracket")}
+                    className={`px-5 py-2 min-h-[40px] text-xs tracking-widest uppercase transition-colors ${
+                      mode === "bracket"
+                        ? "bg-blue-600 text-white"
+                        : "bg-white text-charcoal-500 hover:bg-cream-100"
+                    }`}
+                  >
+                    Bracket
+                  </button>
+                </div>
+              </div>
+
+              {mode === "list" ? (
+                <BracketView
+                  games={view.games}
+                  onSubmit={onSubmit}
+                  onClear={onClear}
+                />
+              ) : (
+                <FormalBracket teamCount={view.teamCount} games={view.games} />
+              )}
+            </div>
           )}
         </div>
       )}

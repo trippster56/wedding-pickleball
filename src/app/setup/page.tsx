@@ -10,7 +10,7 @@ import { Button, Kicker } from "@/components/ui";
 
 type Row = { id: string; name: string };
 
-const COUNTS: TeamCount[] = [8, 9, 10];
+const COUNTS: TeamCount[] = [7, 8, 9];
 
 function newId(): string {
   try {
