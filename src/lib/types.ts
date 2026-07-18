@@ -1,6 +1,6 @@
 // ---- Core tournament domain types ----
 
-export type TeamCount = 7 | 8 | 9;
+export type TeamCount = 7 | 8 | 9 | 10;
 
 export type Team = {
   id: string;

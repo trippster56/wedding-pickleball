@@ -5,7 +5,7 @@ import type { Team, TeamCount } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-const VALID_COUNTS: TeamCount[] = [7, 8, 9];
+const VALID_COUNTS: TeamCount[] = [7, 8, 9, 10];
 
 export async function POST(req: NextRequest) {
   let body: unknown;

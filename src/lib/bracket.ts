@@ -14,7 +14,7 @@ const win = (g: string): Source => ({ t: "w", g });
 const lose = (g: string): Source => ({ t: "l", g });
 
 /**
- * Double-elimination templates for 7, 8, and 9 teams.
+ * Double-elimination templates for 7, 8, 9, and 10 teams.
  *
  * Every template ends with:
  *   GF    — Grand Final: winner(WB final) [side a] vs winner(LB final) [side b]
@@ -73,7 +73,8 @@ function template(count: TeamCount): GameDef[] {
   }
 
   // count === 7 — seed 1 receives a bye; seeds 2–7 play round 1.
-  return [
+  if (count === 7)
+    return [
     // Winners bracket
     { id: "W1", bracket: "W", round: 1, label: "Quarterfinal", a: seed(4), b: seed(5) },
     { id: "W2", bracket: "W", round: 1, label: "Quarterfinal", a: seed(2), b: seed(7) },
@@ -89,6 +90,32 @@ function template(count: TeamCount): GameDef[] {
     { id: "L5", bracket: "L", round: 4, label: "Losers Final", a: win("L4"), b: lose("W6") },
     // Finals
     { id: "GF", bracket: "GF", round: 1, label: "Grand Final", a: win("W6"), b: win("L5") },
+    { id: "RESET", bracket: "RESET", round: 1, label: "Reset", a: win("GF"), b: lose("GF") },
+  ];
+
+  // count === 10 — seeds 1–6 receive a bye; seeds 7–10 play two play-in games.
+  return [
+    // Winners bracket
+    { id: "W1", bracket: "W", round: 1, label: "Play-in", a: seed(8), b: seed(9) },
+    { id: "W2", bracket: "W", round: 1, label: "Play-in", a: seed(7), b: seed(10) },
+    { id: "Q1", bracket: "W", round: 2, label: "Quarterfinal", a: seed(1), b: win("W1") },
+    { id: "Q2", bracket: "W", round: 2, label: "Quarterfinal", a: seed(5), b: seed(4) },
+    { id: "Q3", bracket: "W", round: 2, label: "Quarterfinal", a: seed(3), b: seed(6) },
+    { id: "Q4", bracket: "W", round: 2, label: "Quarterfinal", a: win("W2"), b: seed(2) },
+    { id: "S1", bracket: "W", round: 3, label: "Semifinal", a: win("Q1"), b: win("Q2") },
+    { id: "S2", bracket: "W", round: 3, label: "Semifinal", a: win("Q3"), b: win("Q4") },
+    { id: "F", bracket: "W", round: 4, label: "Winners Final", a: win("S1"), b: win("S2") },
+    // Losers bracket
+    { id: "L1", bracket: "L", round: 1, a: lose("W1"), b: lose("Q4") },
+    { id: "L2", bracket: "L", round: 1, a: lose("W2"), b: lose("Q1") },
+    { id: "L3", bracket: "L", round: 2, a: win("L1"), b: lose("Q3") },
+    { id: "L4", bracket: "L", round: 2, a: lose("Q2"), b: win("L2") },
+    { id: "L5", bracket: "L", round: 3, a: win("L3"), b: lose("S2") },
+    { id: "L6", bracket: "L", round: 3, a: win("L4"), b: lose("S1") },
+    { id: "L7", bracket: "L", round: 4, a: win("L5"), b: win("L6") },
+    { id: "L8", bracket: "L", round: 5, label: "Losers Final", a: win("L7"), b: lose("F") },
+    // Finals
+    { id: "GF", bracket: "GF", round: 1, label: "Grand Final", a: win("F"), b: win("L8") },
     { id: "RESET", bracket: "RESET", round: 1, label: "Reset", a: win("GF"), b: lose("GF") },
   ];
 }

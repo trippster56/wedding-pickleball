@@ -14,6 +14,7 @@ export const DEFAULT_TEAM_NAMES: string[] = [
   "Team 7",
   "Team 8",
   "Team 9",
+  "Team 10",
 ];
 
 let idCounter = 0;
