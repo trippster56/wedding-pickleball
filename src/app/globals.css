@@ -1,0 +1,148 @@
+@import "tailwindcss";
+
+:root {
+  --background: #faf8f5;
+  --foreground: #2c2c2c;
+
+  /* Primary — soft blue */
+  --color-blue-50: #f2f7fe;
+  --color-blue-100: #e1ecfc;
+  --color-blue-200: #c3d9f9;
+  --color-blue-300: #a2c4f5;
+  --color-blue-400: #91baf2;
+  --color-blue-500: #6696d9;
+  --color-blue-600: #4a73a8;
+  --color-blue-700: #3d629a;
+  --color-blue-800: #3d629a;
+  --color-blue-900: #2f4d7a;
+
+  /* Accent — dusty rose */
+  --color-rose-50: #fdf2f4;
+  --color-rose-100: #fbe5ea;
+  --color-rose-200: #f7cbd5;
+  --color-rose-300: #f0a3b5;
+  --color-rose-400: #e6758f;
+  --color-rose-500: #d4506e;
+  --color-rose-600: #b83558;
+  --color-rose-700: #9b2848;
+  --color-rose-800: #822440;
+  --color-rose-900: #6f213b;
+
+  /* Neutrals — warm tones */
+  --color-cream-50: #fefdfb;
+  --color-cream-100: #faf8f5;
+  --color-cream-200: #f5f0e8;
+  --color-cream-300: #ede5d8;
+  --color-cream-400: #d9cdb9;
+  --color-cream-500: #c4b49a;
+  --color-cream-600: #a8947a;
+  --color-cream-700: #8a7762;
+  --color-cream-800: #726350;
+  --color-cream-900: #5e5243;
+
+  /* Charcoal — text tones */
+  --color-charcoal-50: #f6f6f6;
+  --color-charcoal-100: #e7e7e7;
+  --color-charcoal-200: #d1d1d1;
+  --color-charcoal-300: #b0b0b0;
+  --color-charcoal-400: #888888;
+  --color-charcoal-500: #6d6d6d;
+  --color-charcoal-600: #5d5d5d;
+  --color-charcoal-700: #4f4f4f;
+  --color-charcoal-800: #3a3a3a;
+  --color-charcoal-900: #2c2c2c;
+
+  /* Gold — champion accent */
+  --color-gold-400: #d9b45a;
+  --color-gold-500: #c69a3e;
+  --color-gold-600: #a67f2c;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  /* Font families */
+  --font-sans: var(--font-lato);
+  --font-serif: var(--font-playfair);
+
+  /* Blue palette */
+  --color-blue-50: var(--color-blue-50);
+  --color-blue-100: var(--color-blue-100);
+  --color-blue-200: var(--color-blue-200);
+  --color-blue-300: var(--color-blue-300);
+  --color-blue-400: var(--color-blue-400);
+  --color-blue-500: var(--color-blue-500);
+  --color-blue-600: var(--color-blue-600);
+  --color-blue-700: var(--color-blue-700);
+  --color-blue-800: var(--color-blue-800);
+  --color-blue-900: var(--color-blue-900);
+
+  /* Rose palette */
+  --color-rose-50: var(--color-rose-50);
+  --color-rose-100: var(--color-rose-100);
+  --color-rose-200: var(--color-rose-200);
+  --color-rose-300: var(--color-rose-300);
+  --color-rose-400: var(--color-rose-400);
+  --color-rose-500: var(--color-rose-500);
+  --color-rose-600: var(--color-rose-600);
+  --color-rose-700: var(--color-rose-700);
+  --color-rose-800: var(--color-rose-800);
+  --color-rose-900: var(--color-rose-900);
+
+  /* Cream palette */
+  --color-cream-50: var(--color-cream-50);
+  --color-cream-100: var(--color-cream-100);
+  --color-cream-200: var(--color-cream-200);
+  --color-cream-300: var(--color-cream-300);
+  --color-cream-400: var(--color-cream-400);
+  --color-cream-500: var(--color-cream-500);
+  --color-cream-600: var(--color-cream-600);
+  --color-cream-700: var(--color-cream-700);
+  --color-cream-800: var(--color-cream-800);
+  --color-cream-900: var(--color-cream-900);
+
+  /* Charcoal palette */
+  --color-charcoal-50: var(--color-charcoal-50);
+  --color-charcoal-100: var(--color-charcoal-100);
+  --color-charcoal-200: var(--color-charcoal-200);
+  --color-charcoal-300: var(--color-charcoal-300);
+  --color-charcoal-400: var(--color-charcoal-400);
+  --color-charcoal-500: var(--color-charcoal-500);
+  --color-charcoal-600: var(--color-charcoal-600);
+  --color-charcoal-700: var(--color-charcoal-700);
+  --color-charcoal-800: var(--color-charcoal-800);
+  --color-charcoal-900: var(--color-charcoal-900);
+
+  /* Gold palette */
+  --color-gold-400: var(--color-gold-400);
+  --color-gold-500: var(--color-gold-500);
+  --color-gold-600: var(--color-gold-600);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* Heading defaults */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-serif), Georgia, serif;
+}
+
+/* Confetti for the champion moment */
+@keyframes confetti-fall {
+  0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+}
+.confetti-piece {
+  position: fixed;
+  top: 0;
+  width: 10px;
+  height: 14px;
+  will-change: transform;
+  animation: confetti-fall linear forwards;
+  z-index: 60;
+  pointer-events: none;
+}

@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>9 Team Double Elimination — Blank Bracket</title>
+<style>
+  :root{ --ink:#141414; --faint:#b7b7b7; --grey:#666; }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:#ececec; color:var(--ink);
+    font-family:Georgia,'Times New Roman',serif;
+    padding:22px 18px 60px;
+  }
+  .toolbar{
+    max-width:1280px;margin:0 auto 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+    font-family:Arial,Helvetica,sans-serif;
+  }
+  .toolbar .grow{flex:1}
+  .toolbar button{
+    font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;
+    border:1px solid #b0b0b0;background:#fff;color:#222;border-radius:6px;padding:9px 14px;
+  }
+  .toolbar button:hover{border-color:#333}
+  .toolbar .note{font-size:12.5px;color:#555}
+  .toolbar .zoom{display:inline-flex;align-items:center;gap:6px}
+  .toolbar .zoom span{font-size:12px;color:#555;min-width:42px;text-align:center}
+
+  .paper{
+    background:#fff;max-width:1330px;margin:0 auto;
+    box-shadow:0 2px 14px rgba(0,0,0,.18);overflow:auto;
+  }
+  #stage{transform-origin:top left}
+  svg{display:block}
+
+  .title{font-size:26px;font-weight:700;}
+  .brlabel{font-size:13px;font-style:italic;}
+  .gn{font-size:11.5px;font-style:italic;fill:var(--grey)}
+  .key{font-size:12px;fill:var(--grey)}
+  .resetlbl{font-size:11px;font-style:italic;fill:var(--grey)}
+  .champ{font-size:12px;font-weight:700;letter-spacing:.12em;fill:#141414}
+
+  .bk{stroke:var(--ink);stroke-width:1.5;fill:none}
+  .dash{stroke:var(--ink);stroke-width:1.5;fill:none;stroke-dasharray:5 4}
+
+  .fo{height:20px;line-height:1}
+  input.wl{
+    width:100%;height:19px;border:0;background:transparent;outline:none;padding:0 0 1px 2px;
+    font-family:Georgia,'Times New Roman',serif;font-size:13.5px;color:var(--ink);
+  }
+  input.wl::placeholder{color:var(--faint);font-style:italic;font-size:11px}
+
+  @media print{
+    body{background:#fff;padding:0}
+    .toolbar{display:none}
+    .paper{box-shadow:none;max-width:none}
+    #stage{transform:none !important}
+    @page{size:landscape;margin:8mm}
+  }
+</style>
+</head>
+<body>
+  <div class="toolbar">
+    <button id="printBtn">🖨 Print</button>
+    <div class="zoom">
+      <button id="zOut">−</button><span id="zLbl">100%</span><button id="zIn">+</button>
+      <button id="zFit">Fit width</button>
+    </div>
+    <div class="grow"></div>
+    <button id="clearBtn">Clear names</button>
+    <span class="note">Click any line to type a name, or print it blank and write by hand. Print in landscape.</span>
+  </div>
+
+  <div class="paper" id="paper">
+    <div id="stage"></div>
+  </div>
+
+<script>
+(function(){
+  "use strict";
+  const COLX=[40,200,360,520,680,840,1000,1160];
+  const W=1330, H=840;
+  const SP=40, WB_BASE=80, LB_BASE=500;
+
+  // ----- Node definitions -----
+  // leaf:{leaf,col,parentCol,order,ph}  internal:{col,parentCol,children,game}
+  const N={};
+  const L=(id,col,parentCol,order,ph)=>N[id]={leaf:true,col,parentCol,order,ph};
+  const G=(id,col,parentCol,children,game)=>N[id]={col,parentCol,children,game};
+
+  // Winners bracket leaves (top -> bottom): 1, 8,9, 4,5, 2,7, 3,6
+  L('s1',0,2,0,'Seed 1');
+  L('s8',0,1,1,'Seed 8');
+  L('s9',0,1,2,'Seed 9');
+  L('s4',0,2,3,'Seed 4');
+  L('s5',0,2,4,'Seed 5');
+  L('s2',0,2,5,'Seed 2');
+  L('s7',0,2,6,'Seed 7');
+  L('s3',0,2,7,'Seed 3');
+  L('s6',0,2,8,'Seed 6');
+  // Winners bracket games
+  G('G1',1,2,['s8','s9'],1);          // Play-in
+  G('G2',2,3,['s1','G1'],2);          // QF1
+  G('G3',2,3,['s4','s5'],3);          // QF2
+  G('G4',2,3,['s2','s7'],4);          // QF3
+  G('G5',2,3,['s3','s6'],5);          // QF4
+  G('G6',3,4,['G2','G3'],6);          // SF1
+  G('G7',3,4,['G4','G5'],7);          // SF2
+  G('G8',4,6,['G6','G7'],8);          // WB Final (root, -> Grand Final)
+
+  // Losers bracket drop-in leaves (top->bottom DFS order): L1,L2,L3,L6,L4,L5,L7,L8
+  L('dL1',0,1,0,'Loser G1');
+  L('dL2',0,1,1,'Loser G2');
+  L('dL3',1,2,2,'Loser G3');
+  L('dL6',2,3,3,'Loser G6');
+  L('dL4',1,2,4,'Loser G4');
+  L('dL5',1,2,5,'Loser G5');
+  L('dL7',2,3,6,'Loser G7');
+  L('dL8',4,5,7,'Loser G8');
+  // Losers bracket games
+  G('G9', 1,2,['dL1','dL2'],9);
+  G('G10',2,3,['G9','dL3'],10);
+  G('G11',2,3,['dL4','dL5'],11);
+  G('G12',3,4,['G10','dL6'],12);
+  G('G13',3,4,['G11','dL7'],13);
+  G('G14',4,5,['G12','G13'],14);
+  G('G15',5,6,['G14','dL8'],15);      // LB Final (root, -> Grand Final)
+
+  // assign leaf base Y
+  Object.keys(N).forEach(id=>{
+    const n=N[id];
+    if(n.leaf){
+      const base = id[0]==='s' ? WB_BASE : LB_BASE;
+      n.baseY = base + n.order*SP;
+    }
+  });
+
+  const yMemo={};
+  function Y(id){
+    if(id in yMemo) return yMemo[id];
+    const n=N[id]; let y;
+    if(n.leaf){ y=n.baseY; }
+    else{ const cs=n.children.map(Y); y=(Math.min(...cs)+Math.max(...cs))/2; }
+    yMemo[id]=y; return y;
+  }
+
+  // ----- Build SVG -----
+  const parts=[];
+  function line(x1,y1,x2,y2,cls){ parts.push(`<path class="${cls||'bk'}" d="M${x1} ${y1} L${x2} ${y2}"/>`); }
+  function writable(x1,x2,y,ph){
+    const w=x2-x1; if(w<=0) return;
+    parts.push(
+      `<foreignObject x="${x1}" y="${y-20}" width="${w-6}" height="20">`+
+      `<div xmlns="http://www.w3.org/1999/xhtml" class="fo">`+
+      `<input class="wl" type="text" placeholder="${ph||''}"/></div></foreignObject>`
+    );
+  }
+  function text(x,y,cls,t){ parts.push(`<text x="${x}" y="${y}" class="${cls}">${t}</text>`); }
+
+  // draw every node's horizontal line + writable; internals get a vertical + game number
+  Object.keys(N).forEach(id=>{
+    const n=N[id];
+    const x1=COLX[n.col], x2=COLX[n.parentCol], y=Y(id);
+    line(x1,y,x2,y);
+    writable(x1,x2,y, n.leaf ? n.ph : '');
+    if(!n.leaf){
+      const cy=n.children.map(Y);
+      line(x1,Math.min(...cy), x1,Math.max(...cy));      // vertical join
+      text(x1+5, y-5, 'gn', '('+n.game+')');
+    }
+  });
+
+  // ----- Grand Final + Reset -----
+  const yWB=Y('G8'), yLB=Y('G15');
+  const xGF=COLX[6], xEnd=COLX[7];
+  line(xGF, yWB, xGF, yLB);                 // join WB champ (top) & LB champ (bottom)
+  const gfY=(yWB+yLB)/2;
+  line(xGF, gfY, xEnd, gfY);                // grand-final winner line
+  writable(xGF, xEnd, gfY, '');
+  text(xGF+5, gfY-5, 'gn', '(16)');
+  text(xGF+8, gfY-26, 'champ', 'CHAMPION');
+
+  // Reset game (only if Losers-bracket team wins game 16)
+  const resetY=gfY+72;
+  const xMid=xGF+80;
+  line(xMid, gfY, xMid, resetY, 'dash');    // dashed branch down
+  line(xMid, resetY, xEnd, resetY);         // reset match line
+  writable(xMid, xEnd, resetY, '');
+  text(xMid+5, resetY-5, 'gn', '(17)');
+  text(xMid+5, resetY+17, 'resetlbl', 'Reset — only if the Losers Bracket team wins (16)');
+
+  // ----- Headings & key -----
+  text(W/2-150, 34, 'title', '9 Team Double Elimination');
+  text(COLX[0], 60, 'brlabel', "Winner's Bracket");
+  text(COLX[0], LB_BASE-22, 'brlabel', "Loser's Bracket");
+  text(COLX[0], H-26, 'key', 'Seeds 1–7 receive a first-round bye. Seeds 8 & 9 meet in the Game 1 play-in.');
+  text(COLX[0], H-10, 'key', 'Each line: write the winner of that game. "Loser G#" lines = the team that just lost that game drops here.');
+
+  const svg =
+    `<svg id="bk" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`+
+    parts.join('')+`</svg>`;
+  const stage=document.getElementById('stage');
+  stage.innerHTML=svg;
+
+  // ----- Controls -----
+  let scale=1;
+  const stageEl=document.getElementById('stage');
+  const lbl=document.getElementById('zLbl');
+  function apply(){ stageEl.style.transform='scale('+scale+')';
+    document.getElementById('paper').style.height=(H*scale+2)+'px';
+    lbl.textContent=Math.round(scale*100)+'%'; }
+  function fit(){ const cw=document.getElementById('paper').clientWidth; scale=Math.min(1, (cw-4)/W); apply(); }
+  document.getElementById('zIn').onclick=()=>{scale=Math.min(2,scale+0.1);apply();};
+  document.getElementById('zOut').onclick=()=>{scale=Math.max(0.3,scale-0.1);apply();};
+  document.getElementById('zFit').onclick=fit;
+  document.getElementById('printBtn').onclick=()=>window.print();
+  document.getElementById('clearBtn').onclick=()=>{
+    document.querySelectorAll('input.wl').forEach(i=>i.value='');
+  };
+  window.addEventListener('resize',()=>{ if(scale<1) fit(); });
+  fit();
+})();
+</script>
+</body>
+</html>
