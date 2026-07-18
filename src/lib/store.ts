@@ -5,11 +5,12 @@ import { defaultTournament } from "./roster";
 /**
  * Storage abstraction for the single shared tournament document.
  *
- * Production: Upstash Redis (or Vercel KV) — detected via env vars. Game results
- * live in a Redis hash (one field per game) so two phones resolving different
- * games never clobber each other. A version counter bumps on every write.
+ * Production: Redis via `REDIS_URL` (the connection string the Vercel Upstash
+ * integration injects). Game results live in a Redis hash (one field per game)
+ * so two phones resolving different games never clobber each other. A version
+ * counter bumps on every write.
  *
- * Local dev (no Redis env): a JSON file under .data/ so state survives restarts.
+ * Local dev (no REDIS_URL): a JSON file under .data/ so state survives restarts.
  */
 
 const META_KEY = "pb:meta";
@@ -31,36 +32,55 @@ interface Backend {
   bumpVersion(): Promise<void>;
 }
 
-// ---------- Upstash Redis backend ----------
+// ---------- Redis backend (ioredis over REDIS_URL) ----------
 
-function redisEnv() {
-  const url =
-    process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL || "";
-  const token =
-    process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN || "";
-  return url && token ? { url, token } : null;
+function redisUrl(): string | null {
+  return process.env.REDIS_URL || null;
+}
+
+// Reuse one client across serverless invocations / dev hot-reloads.
+type IORedis = import("ioredis").Redis;
+const g = globalThis as unknown as { __pbRedis?: Promise<IORedis> };
+
+async function getRedis(url: string): Promise<IORedis> {
+  if (!g.__pbRedis) {
+    g.__pbRedis = import("ioredis").then(({ default: Redis }) => {
+      const client = new Redis(url, {
+        maxRetriesPerRequest: 3,
+        enableReadyCheck: true,
+        lazyConnect: false,
+      });
+      client.on("error", (e: Error) => console.error("[redis]", e.message));
+      return client;
+    });
+  }
+  return g.__pbRedis;
+}
+
+function parse<T>(raw: string | null): T | null {
+  if (raw == null) return null;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
 }
 
 class RedisBackend implements Backend {
-  private redisPromise: Promise<import("@upstash/redis").Redis>;
+  constructor(private url: string) {}
 
-  constructor(cfg: { url: string; token: string }) {
-    this.redisPromise = import("@upstash/redis").then(
-      ({ Redis }) => new Redis(cfg),
-    );
-  }
-
-  private async r() {
-    return this.redisPromise;
+  private r() {
+    return getRedis(this.url);
   }
 
   async read(): Promise<Tournament> {
     const redis = await this.r();
-    const [meta, results, version] = await Promise.all([
-      redis.get<Meta>(META_KEY),
-      redis.hgetall<Record<string, GameResult>>(RESULTS_KEY),
-      redis.get<number>(VERSION_KEY),
+    const [metaRaw, resultsRaw, versionRaw] = await Promise.all([
+      redis.get(META_KEY),
+      redis.hgetall(RESULTS_KEY),
+      redis.get(VERSION_KEY),
     ]);
+    const meta = parse<Meta>(metaRaw);
     if (!meta) {
       const seeded = defaultTournament();
       await this.reset({
@@ -71,19 +91,24 @@ class RedisBackend implements Backend {
       });
       return seeded;
     }
+    const results: Record<string, GameResult> = {};
+    for (const [id, raw] of Object.entries(resultsRaw ?? {})) {
+      const gr = parse<GameResult>(raw);
+      if (gr) results[id] = gr;
+    }
     return {
-      version: version ?? 1,
+      version: Number(versionRaw) || 1,
       teamCount: meta.teamCount,
       phase: meta.phase,
       teams: meta.teams,
-      results: results ?? {},
+      results,
       updatedAt: meta.updatedAt,
     };
   }
 
   async setResult(gameId: string, result: GameResult): Promise<void> {
     const redis = await this.r();
-    await redis.hset(RESULTS_KEY, { [gameId]: result });
+    await redis.hset(RESULTS_KEY, gameId, JSON.stringify(result));
     await this.touch();
   }
 
@@ -96,7 +121,7 @@ class RedisBackend implements Backend {
   async reset(meta: Meta): Promise<void> {
     const redis = await this.r();
     await redis.del(RESULTS_KEY);
-    await redis.set(META_KEY, meta);
+    await redis.set(META_KEY, JSON.stringify(meta));
     await redis.incr(VERSION_KEY);
   }
 
@@ -108,8 +133,9 @@ class RedisBackend implements Backend {
   private async touch(): Promise<void> {
     const redis = await this.r();
     await redis.incr(VERSION_KEY);
-    const meta = await redis.get<Meta>(META_KEY);
-    if (meta) await redis.set(META_KEY, { ...meta, updatedAt: Date.now() });
+    const meta = parse<Meta>(await redis.get(META_KEY));
+    if (meta)
+      await redis.set(META_KEY, JSON.stringify({ ...meta, updatedAt: Date.now() }));
   }
 }
 
@@ -208,13 +234,13 @@ class FileBackend implements Backend {
 let backend: Backend | null = null;
 function getBackend(): Backend {
   if (backend) return backend;
-  const cfg = redisEnv();
-  backend = cfg ? new RedisBackend(cfg) : new FileBackend();
+  const url = redisUrl();
+  backend = url ? new RedisBackend(url) : new FileBackend();
   return backend;
 }
 
 export function usingRedis(): boolean {
-  return redisEnv() !== null;
+  return redisUrl() !== null;
 }
 
 // ---------- Public operations used by the API ----------
