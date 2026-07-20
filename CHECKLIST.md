@@ -29,7 +29,7 @@ Target: **Saturday, July 25**. Do steps 1–4 the night before; steps 5–7 on t
 
 - [ ] **5. Lock the roster.** Count who's actually there, resolve the solo players
   (see the pairing rule below), then `/setup`:
-  - [ ] Set team count (**7 / 8 / 9 / 10**).
+  - [ ] Set team count (**8 / 9 / 10**).
   - [ ] Type/fix every team name — a merged pair like **"Player A + Player B"** is fine.
   - [ ] Order by seed (top seed = Seed 1), or hit **Shuffle**. **Start tournament.**
 - [ ] **6. Freeze & share the QR.** Open **`/qr`** on the deployed site.

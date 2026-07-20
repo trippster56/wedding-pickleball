@@ -1,20 +1,21 @@
-import type { Team, TeamCount, Tournament } from "./types";
+import type { Player, Team, TeamCount, Tournament } from "./types";
 
 /**
- * Generic placeholder teams. Real names are entered on the /setup page on the
- * day and stored in the runtime datastore — they are never committed to the repo.
+ * Known day-of roster. Confirmed partnered teams are hard-coded so a fresh
+ * setup starts pre-filled; solos (single-player entries) still need a partner
+ * assigned day-of on the /setup page. Anything past this list seeds as blank.
  */
-export const DEFAULT_TEAM_NAMES: string[] = [
-  "Team 1",
-  "Team 2",
-  "Team 3",
-  "Team 4",
-  "Team 5",
-  "Team 6",
-  "Team 7",
-  "Team 8",
-  "Team 9",
-  "Team 10",
+export const DEFAULT_ROSTER: string[][] = [
+  ["Tripp", "Callie"],
+  ["Dean", "Terri"],
+  ["Stephen", "Amber"],
+  ["Ben", "Riley"],
+  ["Hannah", "Chris"],
+  ["Janie", "Thompson"],
+  ["Landon", "Olivia"],
+  ["Tyson"], // solo — needs a partner
+  ["Thomas"], // solo — Hadleigh not playing
+  ["Zach"], // solo — Greer not playing
 ];
 
 let idCounter = 0;
@@ -23,17 +24,50 @@ export function makeTeamId(): string {
   return `t${Date.now().toString(36)}${idCounter}`;
 }
 
+export function makePlayerId(): string {
+  idCounter += 1;
+  return `p${Date.now().toString(36)}${idCounter}`;
+}
+
+/** Derive a team's display label from its players (e.g. "Tripp & Callie"). */
+export function teamLabel(players: Player[], fallback = ""): string {
+  const names = players.map((p) => p.name.trim()).filter(Boolean);
+  return names.length ? names.join(" & ") : fallback;
+}
+
+/**
+ * Backfill `players` for teams persisted before player-level data existed.
+ * Only runs when `players` is absent (legacy) — an intentionally empty array is
+ * left alone. Splits the old free-text name on common partner separators.
+ */
+export function withPlayers(team: Team): Team {
+  if (Array.isArray(team.players)) return team;
+  const parts = (team.name || "")
+    .split(/\s*(?:&|\+|\/|,| and )\s*/i)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return { ...team, players: parts.map((name) => ({ id: makePlayerId(), name })) };
+}
+
 /** Build a default team list for a given count, seeded 1..N in listed order. */
 export function defaultTeams(count: TeamCount): Team[] {
-  return DEFAULT_TEAM_NAMES.slice(0, count).map((name, i) => ({
-    id: `seed-${i + 1}`,
-    name,
-    seed: i + 1,
-  }));
+  return Array.from({ length: count }, (_, i) => {
+    const players = (DEFAULT_ROSTER[i] ?? []).map((name) => ({
+      id: `seed-${i + 1}-${makePlayerId()}`,
+      name,
+    }));
+    return {
+      id: `seed-${i + 1}`,
+      name: teamLabel(players, `Team ${i + 1}`),
+      seed: i + 1,
+      players,
+    };
+  });
 }
 
 export function defaultTournament(): Tournament {
-  const count: TeamCount = 9;
+  // 7 confirmed pairs + 3 known solos; solos get partners assigned day-of.
+  const count: TeamCount = 10;
   return {
     version: 1,
     teamCount: count,

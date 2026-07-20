@@ -14,7 +14,7 @@ const win = (g: string): Source => ({ t: "w", g });
 const lose = (g: string): Source => ({ t: "l", g });
 
 /**
- * Double-elimination templates for 7, 8, 9, and 10 teams.
+ * Double-elimination templates for 8, 9, and 10 teams.
  *
  * Every template ends with:
  *   GF    — Grand Final: winner(WB final) [side a] vs winner(LB final) [side b]
@@ -71,27 +71,6 @@ function template(count: TeamCount): GameDef[] {
       { id: "RESET", bracket: "RESET", round: 1, label: "Reset", a: win("GF"), b: lose("GF") },
     ];
   }
-
-  // count === 7 — seed 1 receives a bye; seeds 2–7 play round 1.
-  if (count === 7)
-    return [
-    // Winners bracket
-    { id: "W1", bracket: "W", round: 1, label: "Quarterfinal", a: seed(4), b: seed(5) },
-    { id: "W2", bracket: "W", round: 1, label: "Quarterfinal", a: seed(2), b: seed(7) },
-    { id: "W3", bracket: "W", round: 1, label: "Quarterfinal", a: seed(3), b: seed(6) },
-    { id: "W4", bracket: "W", round: 2, label: "Semifinal", a: seed(1), b: win("W1") },
-    { id: "W5", bracket: "W", round: 2, label: "Semifinal", a: win("W2"), b: win("W3") },
-    { id: "W6", bracket: "W", round: 3, label: "Winners Final", a: win("W4"), b: win("W5") },
-    // Losers bracket
-    { id: "L1", bracket: "L", round: 1, a: lose("W2"), b: lose("W3") },
-    { id: "L2", bracket: "L", round: 2, a: lose("W1"), b: lose("W5") },
-    { id: "L3", bracket: "L", round: 2, a: win("L1"), b: lose("W4") },
-    { id: "L4", bracket: "L", round: 3, a: win("L2"), b: win("L3") },
-    { id: "L5", bracket: "L", round: 4, label: "Losers Final", a: win("L4"), b: lose("W6") },
-    // Finals
-    { id: "GF", bracket: "GF", round: 1, label: "Grand Final", a: win("W6"), b: win("L5") },
-    { id: "RESET", bracket: "RESET", round: 1, label: "Reset", a: win("GF"), b: lose("GF") },
-  ];
 
   // count === 10 — seeds 1–6 receive a bye; seeds 7–10 play two play-in games.
   return [

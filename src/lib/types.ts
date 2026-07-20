@@ -1,11 +1,19 @@
 // ---- Core tournament domain types ----
 
-export type TeamCount = 7 | 8 | 9 | 10;
+export type TeamCount = 8 | 9 | 10;
+
+// One person on a team. Doubles => up to 2 players per team; a team with a
+// single player is a "solo" still looking for a partner day-of.
+export type Player = {
+  id: string;
+  name: string;
+};
 
 export type Team = {
   id: string;
-  name: string;
+  name: string; // display label, kept in sync with `players` (e.g. "Tripp & Callie")
   seed: number | null; // 1..N once seeded; null while unseeded
+  players: Player[]; // 0–2 people; source of truth for the label
 };
 
 // Where a game slot's participant comes from.

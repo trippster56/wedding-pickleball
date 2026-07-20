@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resetTournament, resolveTournament } from "@/lib/store";
-import { makeTeamId } from "@/lib/roster";
-import type { Team, TeamCount } from "@/lib/types";
+import { makePlayerId, makeTeamId, teamLabel } from "@/lib/roster";
+import type { Player, Team, TeamCount } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-const VALID_COUNTS: TeamCount[] = [7, 8, 9, 10];
+const VALID_COUNTS: TeamCount[] = [8, 9, 10];
 
 export async function POST(req: NextRequest) {
   let body: unknown;
@@ -17,12 +17,17 @@ export async function POST(req: NextRequest) {
 
   const { teamCount, teams } = (body ?? {}) as {
     teamCount?: number;
-    teams?: Array<{ id?: string; name?: string; seed?: number | null }>;
+    teams?: Array<{
+      id?: string;
+      name?: string;
+      seed?: number | null;
+      players?: Array<{ id?: string; name?: string }>;
+    }>;
   };
 
   if (!teamCount || !VALID_COUNTS.includes(teamCount as TeamCount)) {
     return NextResponse.json(
-      { error: "teamCount must be 8, 9, or 10" },
+      { error: "teamCount must be between 8 and 10" },
       { status: 400 },
     );
   }
@@ -51,10 +56,14 @@ export async function POST(req: NextRequest) {
       );
     }
     seedsSeen.add(seed);
+    const players: Player[] = (t.players ?? [])
+      .map((p) => ({ id: p.id || makePlayerId(), name: (p.name || "").trim() }))
+      .filter((p) => p.name);
     clean.push({
       id: t.id || makeTeamId(),
-      name: (t.name || "").trim() || `Seed ${seed}`,
+      name: teamLabel(players, (t.name || "").trim() || `Seed ${seed}`),
       seed,
+      players,
     });
   }
 

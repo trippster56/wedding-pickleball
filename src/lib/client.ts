@@ -1,4 +1,4 @@
-import type { TeamCount, TournamentView } from "./types";
+import type { Player, TeamCount, TournamentView } from "./types";
 
 async function parse(res: Response): Promise<TournamentView> {
   if (!res.ok) {
@@ -40,12 +40,27 @@ export async function postClear(gameId: string): Promise<TournamentView> {
 
 export async function postReset(
   teamCount: TeamCount,
-  teams: Array<{ id: string; name: string; seed: number }>,
+  teams: Array<{ id: string; name: string; seed: number; players: Player[] }>,
 ): Promise<TournamentView> {
   const res = await fetch(`/api/tournament/reset`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ teamCount, teams }),
+  });
+  return parse(res);
+}
+
+/**
+ * Update the players on existing teams in place — keeps seeds, team count, and
+ * all scores intact. Use for day-of roster edits during a live tournament.
+ */
+export async function postTeamPlayers(
+  teams: Array<{ id: string; players: Player[] }>,
+): Promise<TournamentView> {
+  const res = await fetch(`/api/tournament/teams`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ teams }),
   });
   return parse(res);
 }

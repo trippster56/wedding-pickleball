@@ -1,6 +1,6 @@
-import type { GameResult, Team, TeamCount, Tournament } from "./types";
+import type { GameResult, Player, Team, TeamCount, Tournament } from "./types";
 import { buildBracket, resolveTournament } from "./bracket";
-import { defaultTournament } from "./roster";
+import { defaultTournament, teamLabel, withPlayers } from "./roster";
 
 /**
  * Storage abstraction for the single shared tournament document.
@@ -29,6 +29,7 @@ interface Backend {
   setResult(gameId: string, result: GameResult): Promise<void>;
   clearResult(gameId: string): Promise<void>;
   reset(meta: Meta): Promise<void>;
+  setTeams(teams: Team[]): Promise<void>;
   bumpVersion(): Promise<void>;
 }
 
@@ -122,6 +123,18 @@ class RedisBackend implements Backend {
     const redis = await this.r();
     await redis.del(RESULTS_KEY);
     await redis.set(META_KEY, JSON.stringify(meta));
+    await redis.incr(VERSION_KEY);
+  }
+
+  // Update team roster in place (names/seeds) without touching results.
+  async setTeams(teams: Team[]): Promise<void> {
+    const redis = await this.r();
+    const meta = parse<Meta>(await redis.get(META_KEY));
+    if (!meta) return;
+    await redis.set(
+      META_KEY,
+      JSON.stringify({ ...meta, teams, updatedAt: Date.now() }),
+    );
     await redis.incr(VERSION_KEY);
   }
 
@@ -220,6 +233,16 @@ class FileBackend implements Backend {
     });
   }
 
+  setTeams(teams: Team[]): Promise<void> {
+    return this.run(async () => {
+      const t = await this.load();
+      t.teams = teams;
+      t.version += 1;
+      t.updatedAt = Date.now();
+      await this.save(t);
+    });
+  }
+
   bumpVersion(): Promise<void> {
     return this.run(async () => {
       const t = await this.load();
@@ -246,7 +269,10 @@ export function usingRedis(): boolean {
 // ---------- Public operations used by the API ----------
 
 export async function readTournament(): Promise<Tournament> {
-  return getBackend().read();
+  const t = await getBackend().read();
+  // Heal legacy teams that predate player-level data so callers always see
+  // a `players` array.
+  return { ...t, teams: t.teams.map(withPlayers) };
 }
 
 /**
@@ -282,6 +308,30 @@ export async function clearResult(gameId: string): Promise<Tournament> {
   await be.clearResult(gameId);
   await pruneInvalidResults();
   return be.read();
+}
+
+/**
+ * Update the players on existing teams in place, without rebuilding the bracket
+ * or clearing scores. Matches by team id; each team's label is re-derived from
+ * its players. Seeds, team count, phase, and all recorded results are preserved.
+ *
+ * This is the day-of roster path: a solo gets a partner, a sub swaps in, a name
+ * is fixed. The team keeps its seed and bracket slot, so scores stay valid.
+ * Adding/removing whole teams or reseeding must go through `resetTournament`.
+ */
+export async function updateTeamPlayers(
+  updates: Array<{ id: string; players: Player[] }>,
+): Promise<Tournament> {
+  const be = getBackend();
+  const current = await readTournament();
+  const byId = new Map(updates.map((u) => [u.id, u.players]));
+  const next = current.teams.map((t) => {
+    const players = byId.get(t.id);
+    if (!players) return t;
+    return { ...t, players, name: teamLabel(players, t.name) };
+  });
+  await be.setTeams(next);
+  return readTournament();
 }
 
 export async function resetTournament(
