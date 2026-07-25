@@ -1,25 +1,50 @@
 # 🥇 Callie & Tripp — Wedding Pickleball Bracket
 
-A mobile-first, real-time **double-elimination** tournament bracket for the wedding
-party. Guests scan a QR code, everyone sees the same live bracket, and anyone can
-tap a match winner + enter the score. Winners auto-advance and losers drop into the
-losers bracket automatically. Supports **8, 9, or 10 teams**, chosen day-of.
+A mobile-first, real-time tournament bracket for the wedding party. Guests scan a
+QR code, everyone sees the same live bracket, and anyone can tap a match winner +
+enter the score. Winners auto-advance automatically. Supports **8, 9, or 10 teams**
+in either of two **formats**, both chosen day-of.
 
 Built to match the [callieandtripp](https://callieandtripp.com) wedding site
 (Next.js 16, Tailwind v4, Playfair Display + Lato, cream/blue/rose palette).
 
+## Formats
+
+Pick on **/setup**. Every team plays at least twice either way.
+
+| | Matches (8 / 9 / 10 teams) | Rounds on 2 courts | Rough time @ ~15 min/game |
+|---|---|---|---|
+| **Single + Consolation** | 10 / 12 / 14 | 5 / 6 / 7 | ~1¼–1¾ hrs |
+| **Double Elimination** | 15 / 17 / 19 | 8 / 9 / 11 | ~2–3 hrs |
+
+- **Single + Consolation** — a knockout main bracket ending in the **Final**, plus an
+  independent **consolation bracket** seeded from the teams knocked out before the
+  semifinals. Use this when courts or daylight are short. Because the consolation
+  bracket never feeds back into the main one, you can run the whole main bracket
+  first, crown the champion, and play consolation afterwards — or skip it entirely.
+  The **Up Next** tab separates *For the title* from *Consolation* so the title
+  games are always obvious.
+- **Double Elimination** — full losers bracket and a grand-final **reset** if the
+  losers-bracket team wins the first grand final. Fairest, but ~2× the games and a
+  much longer dependency chain (more waiting on 2 courts).
+
 ## How it works day-of
 
-1. **/setup** — pick 8/9/10 teams, edit names, order them by seed (arrows or Shuffle),
-   then **Start tournament**.
+1. **/setup** — choose the format, set 8/9/10 teams, edit names, order them by seed
+   (arrows or Shuffle), then **Start tournament**. The page shows the match count and
+   estimated rounds for whatever you've picked.
 2. **/** — the live bracket. The **Up Next** tab shows every match that's ready;
    tap the winner, set the score (defaults 11–x), Confirm. Everyone's screen updates
-   within ~1.5s. Tabs for Winners / Losers / Finals show the full bracket.
+   within ~1.5s. The remaining tabs show the full bracket for the current format.
 3. **/qr** — a QR code + link to share. Show it on a phone or print it.
-4. Champion (incl. the grand-final **reset** if the losers-bracket team wins) triggers
-   a confetti moment.
+4. The champion triggers a confetti moment — on the **Final** in single elim, or the
+   grand final / **reset** in double elim.
 
 Undo any result with **Edit result** on a decided match — downstream games recompute.
+
+> Changing the **format**, team count, or seeding rebuilds the bracket and clears
+> scores. Editing *players* on a team (a solo finding a partner, a sub swapping in)
+> keeps seeds and every score.
 
 ## Local development
 

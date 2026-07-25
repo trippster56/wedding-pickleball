@@ -1,4 +1,5 @@
 import type {
+  Format,
   GameDef,
   ResolvedGame,
   SlotState,
@@ -23,7 +24,7 @@ const lose = (g: string): Source => ({ t: "l", g });
  * The 9-team layout is ported verbatim from
  * `9-team-double-elimination-blank-bracket_1.html` (games G1–G17).
  */
-function template(count: TeamCount): GameDef[] {
+function doubleTemplate(count: TeamCount): GameDef[] {
   if (count === 9) {
     return [
       // Winners bracket
@@ -99,11 +100,97 @@ function template(count: TeamCount): GameDef[] {
   ];
 }
 
-const templateCache: Partial<Record<TeamCount, GameDef[]>> = {};
+/**
+ * Single-elimination templates for 8, 9, and 10 teams.
+ *
+ * Two independent trees:
+ *   W — the main bracket, ending in `F` (the Final; its winner is champion).
+ *   C — a consolation bracket seeded from the teams knocked out before the
+ *       semifinals (play-in losers + quarterfinal losers), ending in `CF`.
+ *
+ * The consolation bracket is what keeps this from being "half the field plays
+ * one game and sits down": everybody gets at least two matches. It also has no
+ * dependency on the main bracket past the quarterfinals, so its games can run
+ * on a second court while the semis and final are being played.
+ *
+ * Consolation pairings are crossed so no consolation match up to and including
+ * the semifinals can be a rematch. The one rematch still possible is a play-in
+ * pair meeting again in the consolation final (`CF`) — both the play-in loser
+ * and the team that beat them can land in this bracket, and a static
+ * winner/loser wiring can't route around it. It plays as a revenge match, which
+ * is fine.
+ */
+function singleTemplate(count: TeamCount): GameDef[] {
+  if (count === 9) {
+    return [
+      // Main bracket — 8 games
+      { id: "P1", bracket: "W", round: 1, label: "Play-in", a: seed(8), b: seed(9) },
+      { id: "Q1", bracket: "W", round: 2, label: "Quarterfinal", a: seed(1), b: win("P1") },
+      { id: "Q2", bracket: "W", round: 2, label: "Quarterfinal", a: seed(4), b: seed(5) },
+      { id: "Q3", bracket: "W", round: 2, label: "Quarterfinal", a: seed(2), b: seed(7) },
+      { id: "Q4", bracket: "W", round: 2, label: "Quarterfinal", a: seed(3), b: seed(6) },
+      { id: "S1", bracket: "W", round: 3, label: "Semifinal", a: win("Q1"), b: win("Q2") },
+      { id: "S2", bracket: "W", round: 3, label: "Semifinal", a: win("Q3"), b: win("Q4") },
+      { id: "F", bracket: "W", round: 4, label: "Final", a: win("S1"), b: win("S2") },
+      // Consolation — 5 teams, 4 games
+      { id: "C1", bracket: "C", round: 1, label: "Consolation Play-in", a: lose("P1"), b: lose("Q3") },
+      { id: "C2", bracket: "C", round: 2, label: "Consolation Semi", a: win("C1"), b: lose("Q2") },
+      { id: "C3", bracket: "C", round: 2, label: "Consolation Semi", a: lose("Q1"), b: lose("Q4") },
+      { id: "CF", bracket: "C", round: 3, label: "Consolation Final", a: win("C2"), b: win("C3") },
+    ];
+  }
 
-export function buildBracket(count: TeamCount): GameDef[] {
-  if (!templateCache[count]) templateCache[count] = template(count);
-  return templateCache[count]!;
+  if (count === 8) {
+    return [
+      // Main bracket — 7 games
+      { id: "Q1", bracket: "W", round: 1, label: "Quarterfinal", a: seed(1), b: seed(8) },
+      { id: "Q2", bracket: "W", round: 1, label: "Quarterfinal", a: seed(4), b: seed(5) },
+      { id: "Q3", bracket: "W", round: 1, label: "Quarterfinal", a: seed(2), b: seed(7) },
+      { id: "Q4", bracket: "W", round: 1, label: "Quarterfinal", a: seed(3), b: seed(6) },
+      { id: "S1", bracket: "W", round: 2, label: "Semifinal", a: win("Q1"), b: win("Q2") },
+      { id: "S2", bracket: "W", round: 2, label: "Semifinal", a: win("Q3"), b: win("Q4") },
+      { id: "F", bracket: "W", round: 3, label: "Final", a: win("S1"), b: win("S2") },
+      // Consolation — 4 quarterfinal losers, 3 games
+      { id: "C1", bracket: "C", round: 1, label: "Consolation Semi", a: lose("Q1"), b: lose("Q2") },
+      { id: "C2", bracket: "C", round: 1, label: "Consolation Semi", a: lose("Q3"), b: lose("Q4") },
+      { id: "CF", bracket: "C", round: 2, label: "Consolation Final", a: win("C1"), b: win("C2") },
+    ];
+  }
+
+  // count === 10 — seeds 1–6 get a bye; seeds 7–10 play two play-in games.
+  return [
+    // Main bracket — 9 games
+    { id: "P1", bracket: "W", round: 1, label: "Play-in", a: seed(8), b: seed(9) },
+    { id: "P2", bracket: "W", round: 1, label: "Play-in", a: seed(7), b: seed(10) },
+    { id: "Q1", bracket: "W", round: 2, label: "Quarterfinal", a: seed(1), b: win("P1") },
+    { id: "Q2", bracket: "W", round: 2, label: "Quarterfinal", a: seed(5), b: seed(4) },
+    { id: "Q3", bracket: "W", round: 2, label: "Quarterfinal", a: seed(3), b: seed(6) },
+    { id: "Q4", bracket: "W", round: 2, label: "Quarterfinal", a: win("P2"), b: seed(2) },
+    { id: "S1", bracket: "W", round: 3, label: "Semifinal", a: win("Q1"), b: win("Q2") },
+    { id: "S2", bracket: "W", round: 3, label: "Semifinal", a: win("Q3"), b: win("Q4") },
+    { id: "F", bracket: "W", round: 4, label: "Final", a: win("S1"), b: win("S2") },
+    // Consolation — 6 teams, 5 games
+    { id: "C1", bracket: "C", round: 1, label: "Consolation Play-in", a: lose("P1"), b: lose("Q2") },
+    { id: "C2", bracket: "C", round: 1, label: "Consolation Play-in", a: lose("P2"), b: lose("Q3") },
+    { id: "C3", bracket: "C", round: 2, label: "Consolation Semi", a: win("C1"), b: lose("Q4") },
+    { id: "C4", bracket: "C", round: 2, label: "Consolation Semi", a: win("C2"), b: lose("Q1") },
+    { id: "CF", bracket: "C", round: 3, label: "Consolation Final", a: win("C3"), b: win("C4") },
+  ];
+}
+
+const templateCache: Record<string, GameDef[]> = {};
+
+export function buildBracket(count: TeamCount, format: Format): GameDef[] {
+  const key = `${format}:${count}`;
+  if (!templateCache[key])
+    templateCache[key] =
+      format === "single" ? singleTemplate(count) : doubleTemplate(count);
+  return templateCache[key];
+}
+
+/** The game whose winner lifts the trophy (ignoring a double-elim reset). */
+function finalGameId(format: Format): string {
+  return format === "single" ? "F" : "GF";
 }
 
 // ---- Resolution: turn (defs + results + teams) into a client-facing view ----
@@ -160,7 +247,8 @@ function makeResolver(
 }
 
 export function resolveTournament(t: Tournament): TournamentView {
-  const defs = buildBracket(t.teamCount);
+  const format = t.format ?? "double";
+  const defs = buildBracket(t.teamCount, format);
   const defsById: Record<string, GameDef> = {};
   for (const d of defs) defsById[d.id] = d;
 
@@ -170,8 +258,9 @@ export function resolveTournament(t: Tournament): TournamentView {
   const { resolve } = makeResolver(defsById, t.results, teamBySeed);
 
   // Does the grand final need a reset? Only when the LB team (GF side b) wins.
+  // Single elimination has no grand final, so never.
   const gfResult = t.results["GF"];
-  const resetActive = !!gfResult && gfResult.winner === "b";
+  const resetActive = format === "double" && !!gfResult && gfResult.winner === "b";
 
   const games: ResolvedGame[] = defs.map((d) => {
     const a = resolve(d.a, new Set());
@@ -194,12 +283,13 @@ export function resolveTournament(t: Tournament): TournamentView {
     };
   });
 
-  const champion = computeChampion(t, defsById, resetActive, resolve);
+  const champion = computeChampion(t, format, defsById, resetActive, resolve);
   const phase: TournamentView["phase"] = champion ? "done" : t.phase;
 
   return {
     version: t.version,
     teamCount: t.teamCount,
+    format,
     phase,
     teams: t.teams,
     games,
@@ -212,16 +302,18 @@ type Team = { id: string; name: string; seed: number | null };
 
 function computeChampion(
   t: Tournament,
+  format: Format,
   defsById: Record<string, GameDef>,
   resetActive: boolean,
   resolve: (src: Source, visiting: Set<string>) => SlotState,
 ): { teamId: string; name: string } | null {
-  const gf = t.results["GF"];
+  const finalId = finalGameId(format);
+  const gf = t.results[finalId];
   if (!gf) return null;
 
-  // WB team won the grand final outright -> champion, no reset.
+  // Single elim, or a WB team that won the grand final outright -> champion.
   if (!resetActive) {
-    const s = resolve(defsById["GF"][gf.winner === "a" ? "a" : "b"], new Set());
+    const s = resolve(defsById[finalId][gf.winner === "a" ? "a" : "b"], new Set());
     return s.state === "team" ? { teamId: s.teamId, name: s.name } : null;
   }
 

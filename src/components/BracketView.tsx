@@ -1,30 +1,42 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import type { ResolvedGame } from "@/lib/types";
+import { useEffect, useMemo, useState } from "react";
+import type { Format, ResolvedGame } from "@/lib/types";
 import { GameCard } from "./GameCard";
 
-type Tab = "next" | "W" | "L" | "finals";
+type Tab = "next" | "W" | "L" | "C" | "finals";
 
-const TABS: { key: Tab; label: string }[] = [
-  { key: "next", label: "Up Next" },
-  { key: "W", label: "Winners" },
-  { key: "L", label: "Losers" },
-  { key: "finals", label: "Finals" },
-];
+const TABS: Record<Format, { key: Tab; label: string }[]> = {
+  double: [
+    { key: "next", label: "Up Next" },
+    { key: "W", label: "Winners" },
+    { key: "L", label: "Losers" },
+    { key: "finals", label: "Finals" },
+  ],
+  single: [
+    { key: "next", label: "Up Next" },
+    { key: "W", label: "Bracket" },
+    { key: "C", label: "Consolation" },
+  ],
+};
 
-function roundName(bracket: string, round: number, games: ResolvedGame[]): string {
-  const inRound = games.filter((g) => g.round === round);
-  const withLabel = inRound.find((g) => g.label);
-  if (withLabel?.label && inRound.length === 1) return withLabel.label;
+/**
+ * Heading for a group of games in the same round. A round whose games all carry
+ * the same label uses it ("Quarterfinal"); otherwise fall back to the number.
+ */
+function roundName(round: number, games: ResolvedGame[]): string {
+  const label = games[0]?.label;
+  if (label && games.every((g) => g.label === label)) return label;
   return `Round ${round}`;
 }
 
 export function BracketView({
+  format,
   games,
   onSubmit,
   onClear,
 }: {
+  format: Format;
   games: ResolvedGame[];
   onSubmit: (
     gameId: string,
@@ -35,11 +47,28 @@ export function BracketView({
   onClear: (gameId: string) => Promise<void>;
 }) {
   const [tab, setTab] = useState<Tab>("next");
+  const tabs = TABS[format];
 
-  const playable = useMemo(
-    () => games.filter((g) => g.playable),
-    [games],
-  );
+  // Switching format mid-session (a rebuild) can leave a tab selected that no
+  // longer exists — fall back to Up Next.
+  useEffect(() => {
+    if (!tabs.some((t) => t.key === tab)) setTab("next");
+  }, [tabs, tab]);
+
+  const playable = useMemo(() => games.filter((g) => g.playable), [games]);
+
+  // In single elim only the main bracket decides the title, so Up Next splits
+  // into title games first and consolation second — play down the list and the
+  // championship finishes as early as possible.
+  const upNext = useMemo(() => {
+    if (format !== "single") return [{ heading: null, list: playable }];
+    const title = playable.filter((g) => g.bracket !== "C");
+    const cons = playable.filter((g) => g.bracket === "C");
+    return [
+      { heading: "For the title", list: title },
+      { heading: "Consolation — play these on a spare court", list: cons },
+    ].filter((s) => s.list.length > 0);
+  }, [playable, format]);
 
   const grouped = useMemo(() => {
     const pick = (bracket: string) =>
@@ -55,6 +84,7 @@ export function BracketView({
     return {
       W: byRound(pick("W")),
       L: byRound(pick("L")),
+      C: byRound(pick("C")),
       finals: games.filter(
         (g) => (g.bracket === "GF" || g.bracket === "RESET") && g.active,
       ),
@@ -75,7 +105,7 @@ export function BracketView({
       {/* Tab bar */}
       <div className="sticky top-0 z-20 -mx-5 px-5 py-3 bg-cream-100/90 backdrop-blur-sm border-b border-cream-300">
         <div className="flex gap-1.5 overflow-x-auto">
-          {TABS.map((t) => {
+          {tabs.map((t) => {
             const count = t.key === "next" ? playable.length : null;
             const active = tab === t.key;
             return (
@@ -114,17 +144,36 @@ export function BracketView({
                 <p className="text-center text-xs tracking-widest uppercase text-charcoal-400">
                   Ready to play — tap the winner
                 </p>
-                {playable.map(card)}
+                {upNext.map((section) => (
+                  <section
+                    key={section.heading ?? "all"}
+                    className="space-y-3 pt-1"
+                  >
+                    {section.heading && (
+                      <h3 className="text-center text-[11px] tracking-widest uppercase text-charcoal-500">
+                        {section.heading}
+                      </h3>
+                    )}
+                    {section.list.map(card)}
+                  </section>
+                ))}
               </>
             )}
           </div>
         )}
 
-        {(tab === "W" || tab === "L") &&
+        {tab === "C" && (
+          <p className="text-center text-[11px] text-charcoal-400 leading-relaxed">
+            Second chance for teams knocked out before the semifinals — play
+            these on the open court.
+          </p>
+        )}
+
+        {(tab === "W" || tab === "L" || tab === "C") &&
           grouped[tab].map(([round, list]) => (
             <section key={round} className="space-y-3">
               <h3 className="text-center text-sm tracking-widest uppercase text-charcoal-500">
-                {roundName(tab, round, list)}
+                {roundName(round, list)}
               </h3>
               {list.map(card)}
             </section>

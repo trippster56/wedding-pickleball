@@ -12,6 +12,7 @@ import { Kicker } from "@/components/ui";
 export default function Home() {
   const { view, error, loading, apply } = useTournament();
   const [mode, setMode] = useState<"list" | "bracket">("list");
+  const single = view?.format === "single";
 
   async function onSubmit(
     gameId: string,
@@ -41,7 +42,8 @@ export default function Home() {
         </h1>
         <div className="mx-auto w-16 h-px bg-blue-400 my-4" />
         <p className="text-charcoal-500 text-sm tracking-wide">
-          Saturday, July 25 · Double Elimination
+          Saturday, July 25 ·{" "}
+          {single ? "Single Elimination + Consolation" : "Double Elimination"}
         </p>
         <div className="flex items-center justify-center gap-3 mt-4 text-xs tracking-widest uppercase">
           <Link href="/setup" className="text-blue-700 hover:text-blue-800">
@@ -112,12 +114,17 @@ export default function Home() {
 
               {mode === "list" ? (
                 <BracketView
+                  format={view.format}
                   games={view.games}
                   onSubmit={onSubmit}
                   onClear={onClear}
                 />
               ) : (
-                <FormalBracket teamCount={view.teamCount} games={view.games} />
+                <FormalBracket
+                  teamCount={view.teamCount}
+                  format={view.format}
+                  games={view.games}
+                />
               )}
             </div>
           )}
@@ -128,7 +135,9 @@ export default function Home() {
         Tap the winner of any ready match to advance them. Everyone&apos;s screen
         updates live.
         <br />
-        Double elimination — every team plays at least twice.
+        {single
+          ? "Lose in the main bracket, pick it back up in the consolation bracket — every team plays at least twice."
+          : "Double elimination — every team plays at least twice."}
       </footer>
     </main>
   );

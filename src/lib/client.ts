@@ -1,4 +1,4 @@
-import type { Player, TeamCount, TournamentView } from "./types";
+import type { Format, Player, TeamCount, TournamentView } from "./types";
 
 async function parse(res: Response): Promise<TournamentView> {
   if (!res.ok) {
@@ -40,12 +40,13 @@ export async function postClear(gameId: string): Promise<TournamentView> {
 
 export async function postReset(
   teamCount: TeamCount,
+  format: Format,
   teams: Array<{ id: string; name: string; seed: number; players: Player[] }>,
 ): Promise<TournamentView> {
   const res = await fetch(`/api/tournament/reset`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ teamCount, teams }),
+    body: JSON.stringify({ teamCount, format, teams }),
   });
   return parse(res);
 }

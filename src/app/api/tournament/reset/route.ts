@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resetTournament, resolveTournament } from "@/lib/store";
 import { makePlayerId, makeTeamId, teamLabel } from "@/lib/roster";
-import type { Player, Team, TeamCount } from "@/lib/types";
+import type { Format, Player, Team, TeamCount } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 const VALID_COUNTS: TeamCount[] = [8, 9, 10];
+const VALID_FORMATS: Format[] = ["double", "single"];
 
 export async function POST(req: NextRequest) {
   let body: unknown;
@@ -15,8 +16,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { teamCount, teams } = (body ?? {}) as {
+  const { teamCount, format, teams } = (body ?? {}) as {
     teamCount?: number;
+    format?: string;
     teams?: Array<{
       id?: string;
       name?: string;
@@ -28,6 +30,14 @@ export async function POST(req: NextRequest) {
   if (!teamCount || !VALID_COUNTS.includes(teamCount as TeamCount)) {
     return NextResponse.json(
       { error: "teamCount must be between 8 and 10" },
+      { status: 400 },
+    );
+  }
+  // Omitted format keeps the old behaviour (double elimination).
+  const fmt: Format = (format ?? "double") as Format;
+  if (!VALID_FORMATS.includes(fmt)) {
+    return NextResponse.json(
+      { error: "format must be 'single' or 'double'" },
       { status: 400 },
     );
   }
@@ -68,6 +78,6 @@ export async function POST(req: NextRequest) {
   }
 
   clean.sort((a, b) => (a.seed ?? 0) - (b.seed ?? 0));
-  const t = await resetTournament(teamCount as TeamCount, clean);
+  const t = await resetTournament(teamCount as TeamCount, fmt, clean);
   return NextResponse.json(resolveTournament(t));
 }

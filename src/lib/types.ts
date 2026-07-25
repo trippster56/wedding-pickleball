@@ -2,6 +2,18 @@
 
 export type TeamCount = 8 | 9 | 10;
 
+/**
+ * Tournament shape.
+ *
+ * - "double" — full double elimination (~18–19 games). Every team plays at
+ *   least twice; losers get a second life all the way to a grand-final reset.
+ * - "single" — single-elimination main bracket plus a consolation bracket for
+ *   the teams knocked out before the semifinals (~10–14 games). Still gives
+ *   everyone two games, but roughly a third fewer matches and a much shorter
+ *   dependency chain — the format to use on limited courts.
+ */
+export type Format = "double" | "single";
+
 // One person on a team. Doubles => up to 2 players per team; a team with a
 // single player is a "solo" still looking for a partner day-of.
 export type Player = {
@@ -22,7 +34,15 @@ export type Source =
   | { t: "w"; g: string } // winner of game `g`
   | { t: "l"; g: string }; // loser of game `g`
 
-export type BracketKind = "W" | "L" | "GF" | "RESET";
+/**
+ * Which sub-bracket a game belongs to.
+ *   W     — main/winners bracket (both formats)
+ *   L     — losers bracket ("double" only)
+ *   GF    — grand final ("double" only)
+ *   RESET — grand-final reset ("double" only)
+ *   C     — consolation bracket ("single" only)
+ */
+export type BracketKind = "W" | "L" | "GF" | "RESET" | "C";
 
 // Static definition of a game (the wiring — never mutated during play).
 export type GameDef = {
@@ -47,6 +67,7 @@ export type Phase = "setup" | "live" | "done";
 export type Tournament = {
   version: number;
   teamCount: TeamCount;
+  format: Format;
   phase: Phase;
   teams: Team[]; // length === teamCount
   results: Record<string, GameResult>; // gameId -> result
@@ -76,6 +97,7 @@ export type ResolvedGame = {
 export type TournamentView = {
   version: number;
   teamCount: TeamCount;
+  format: Format;
   phase: Phase;
   teams: Team[];
   games: ResolvedGame[];

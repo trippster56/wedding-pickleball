@@ -3,12 +3,28 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import type { Player, TeamCount } from "@/lib/types";
+import type { Format, Player, TeamCount } from "@/lib/types";
 import { teamLabel } from "@/lib/roster";
+import { buildBracket } from "@/lib/bracket";
 import { fetchTournament, postReset, postTeamPlayers } from "@/lib/client";
 import { Button, Kicker } from "@/components/ui";
 
 type Row = { id: string; players: Player[] };
+
+const FORMATS: { key: Format; label: string; blurb: string }[] = [
+  {
+    key: "single",
+    label: "Single + Consolation",
+    blurb:
+      "Knockout bracket plus a consolation bracket for early exits. Everyone still plays twice, in about half the games — the pick for two courts.",
+  },
+  {
+    key: "double",
+    label: "Double Elimination",
+    blurb:
+      "Full losers bracket and a grand-final reset. The fairest format, but roughly twice the games and twice the time.",
+  },
+];
 
 // The bracket templates only exist for these sizes.
 const MIN_TEAMS = 8;
@@ -37,15 +53,26 @@ function withSlot(players: Player[]): Player[] {
   return players.length ? players : [blankPlayer()];
 }
 
-// A signature of the bracket-affecting shape: how many teams and in what seed
-// order. Unchanged => edits are roster-only and scores can be kept.
-function structureSig(rows: Row[]): string {
-  return rows.map((r) => r.id).join("|");
+// A signature of the bracket-affecting shape: the format, plus how many teams
+// and in what seed order. Unchanged => edits are roster-only and scores can be
+// kept.
+function structureSig(rows: Row[], format: Format): string {
+  return format + "::" + rows.map((r) => r.id).join("|");
+}
+
+// Total matches in a bracket, for the estimate shown under the format picker.
+// Two courts running back to back ⇒ roughly ceil(games / 2) time slots.
+function gameEstimate(count: number, format: Format) {
+  if (count < 8 || count > 10) return null;
+  const games = buildBracket(count as TeamCount, format).length;
+  const slots = Math.ceil(games / 2);
+  return { games, slots };
 }
 
 export default function SetupPage() {
   const router = useRouter();
   const [rows, setRows] = useState<Row[]>([]);
+  const [format, setFormat] = useState<Format>("single");
   const [initialSig, setInitialSig] = useState<string>("");
   const [loaded, setLoaded] = useState(false);
   const [wasLive, setWasLive] = useState(false);
@@ -59,19 +86,23 @@ export default function SetupPage() {
         const ordered = [...v.teams]
           .sort((a, b) => (a.seed ?? 0) - (b.seed ?? 0))
           .map((t) => ({ id: t.id, players: withSlot(t.players ?? []) }));
+        const fmt = v.format ?? "double";
         setRows(ordered);
-        setInitialSig(structureSig(ordered));
+        setFormat(fmt);
+        setInitialSig(structureSig(ordered, fmt));
       })
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoaded(true));
   }, []);
 
   const teamCount = rows.length;
-  const structureChanged = structureSig(rows) !== initialSig;
+  const structureChanged = structureSig(rows, format) !== initialSig;
   // A live bracket can have its roster edited without a rebuild; anything
-  // structural (adding/removing/reordering teams) has to rebuild, which clears
-  // scores. Editing the players on a team keeps its seed and slot.
+  // structural (changing the format, or adding/removing/reordering teams) has to
+  // rebuild, which clears scores. Editing the players on a team keeps its seed
+  // and slot.
   const keepsScores = wasLive && !structureChanged;
+  const estimate = gameEstimate(teamCount, format);
 
   function setPlayerName(ri: number, pi: number, name: string) {
     setRows((prev) =>
@@ -174,7 +205,7 @@ export default function SetupPage() {
 
     if (wasLive) {
       const ok = window.confirm(
-        "This changes the number of teams or their seeding, which rebuilds the bracket and clears any scores already entered. Continue?",
+        "This changes the format, the number of teams, or their seeding, which rebuilds the bracket and clears any scores already entered. Continue?",
       );
       if (!ok) return;
     }
@@ -184,7 +215,7 @@ export default function SetupPage() {
         const players = namedPlayers(r);
         return { id: r.id, name: teamLabel(players), seed: i + 1, players };
       });
-      await postReset(teamCount as TeamCount, teams);
+      await postReset(teamCount as TeamCount, format, teams);
       router.push("/");
     } catch (e) {
       setError((e as Error).message);
@@ -219,6 +250,38 @@ export default function SetupPage() {
         <p className="text-center text-charcoal-400 text-sm py-10">Loading…</p>
       ) : (
         <>
+          {/* Format picker */}
+          <section className="mb-6">
+            <h2 className="text-center text-xs tracking-widest uppercase text-charcoal-400 mb-2">
+              Format
+            </h2>
+            <div className="flex rounded-sm border border-cream-300 overflow-hidden">
+              {FORMATS.map((f) => (
+                <button
+                  key={f.key}
+                  onClick={() => setFormat(f.key)}
+                  aria-pressed={format === f.key}
+                  className={`flex-1 px-3 py-2.5 min-h-[44px] text-[11px] sm:text-xs tracking-widest uppercase transition-colors ${
+                    format === f.key
+                      ? "bg-blue-600 text-white"
+                      : "bg-white text-charcoal-500 hover:bg-cream-100"
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-center text-[11px] text-charcoal-500 leading-relaxed">
+              {FORMATS.find((f) => f.key === format)?.blurb}
+            </p>
+            {estimate && (
+              <p className="mt-1.5 text-center text-[11px] text-charcoal-400">
+                {estimate.games} matches · about {estimate.slots} rounds on 2
+                courts
+              </p>
+            )}
+          </section>
+
           {/* Team list */}
           <div className="space-y-3">
             {rows.map((r, i) => (
@@ -328,7 +391,7 @@ export default function SetupPage() {
             <p className="mt-4 text-center text-[11px] text-charcoal-500">
               {keepsScores
                 ? "Editing players only — seeds and scores will be kept."
-                : "Changing the team count or seeding rebuilds the bracket and clears existing scores."}
+                : "Changing the format, team count, or seeding rebuilds the bracket and clears existing scores."}
             </p>
           )}
 

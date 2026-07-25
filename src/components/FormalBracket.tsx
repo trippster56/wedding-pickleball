@@ -1,16 +1,29 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import type { GameDef, ResolvedGame, SlotState, Source, TeamCount } from "@/lib/types";
+import { useEffect, useMemo, useState } from "react";
+import type {
+  Format,
+  GameDef,
+  ResolvedGame,
+  SlotState,
+  Source,
+  TeamCount,
+} from "@/lib/types";
 import { buildBracket } from "@/lib/bracket";
 
-type Br = "W" | "L" | "finals";
+type Br = "W" | "L" | "C" | "finals";
 
-const TABS: { key: Br; label: string }[] = [
-  { key: "W", label: "Winners" },
-  { key: "L", label: "Losers" },
-  { key: "finals", label: "Finals" },
-];
+const TABS: Record<Format, { key: Br; label: string }[]> = {
+  double: [
+    { key: "W", label: "Winners" },
+    { key: "L", label: "Losers" },
+    { key: "finals", label: "Finals" },
+  ],
+  single: [
+    { key: "W", label: "Bracket" },
+    { key: "C", label: "Consolation" },
+  ],
+};
 
 // Layout constants (mobile-tuned).
 const BOX_W = 170;
@@ -157,14 +170,22 @@ function Box({
 
 export function FormalBracket({
   teamCount,
+  format,
   games,
 }: {
   teamCount: TeamCount;
+  format: Format;
   games: ResolvedGame[];
 }) {
   const [br, setBr] = useState<Br>("W");
+  const tabs = TABS[format];
 
-  const defs = useMemo(() => buildBracket(teamCount), [teamCount]);
+  // A format switch can strand the selected tab (no Losers in single elim).
+  useEffect(() => {
+    if (!tabs.some((t) => t.key === br)) setBr("W");
+  }, [tabs, br]);
+
+  const defs = useMemo(() => buildBracket(teamCount, format), [teamCount, format]);
   const defsById = useMemo(() => {
     const m: Record<string, GameDef> = {};
     for (const d of defs) m[d.id] = d;
@@ -212,9 +233,9 @@ export function FormalBracket({
 
   return (
     <div>
-      {/* W / L / Finals switch */}
+      {/* Sub-bracket switch */}
       <div className="flex justify-center gap-1.5 mb-4">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t.key}
             onClick={() => setBr(t.key)}

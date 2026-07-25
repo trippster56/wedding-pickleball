@@ -1,4 +1,4 @@
-import type { GameResult, Player, Team, TeamCount, Tournament } from "./types";
+import type { Format, GameResult, Player, Team, TeamCount, Tournament } from "./types";
 import { buildBracket, resolveTournament } from "./bracket";
 import { defaultTournament, teamLabel, withPlayers } from "./roster";
 
@@ -19,6 +19,8 @@ const VERSION_KEY = "pb:version";
 
 type Meta = {
   teamCount: TeamCount;
+  // Absent on docs written before formats existed — read as "double".
+  format?: Format;
   phase: Tournament["phase"];
   teams: Team[];
   updatedAt: number;
@@ -86,6 +88,7 @@ class RedisBackend implements Backend {
       const seeded = defaultTournament();
       await this.reset({
         teamCount: seeded.teamCount,
+        format: seeded.format,
         phase: seeded.phase,
         teams: seeded.teams,
         updatedAt: seeded.updatedAt,
@@ -100,6 +103,7 @@ class RedisBackend implements Backend {
     return {
       version: Number(versionRaw) || 1,
       teamCount: meta.teamCount,
+      format: meta.format ?? "double",
       phase: meta.phase,
       teams: meta.teams,
       results,
@@ -225,6 +229,7 @@ class FileBackend implements Backend {
       await this.save({
         version: t.version + 1,
         teamCount: meta.teamCount,
+        format: meta.format ?? "double",
         phase: meta.phase,
         teams: meta.teams,
         results: {},
@@ -270,9 +275,9 @@ export function usingRedis(): boolean {
 
 export async function readTournament(): Promise<Tournament> {
   const t = await getBackend().read();
-  // Heal legacy teams that predate player-level data so callers always see
-  // a `players` array.
-  return { ...t, teams: t.teams.map(withPlayers) };
+  // Heal legacy docs: teams that predate player-level data, and docs written
+  // before the single/double format switch existed.
+  return { ...t, format: t.format ?? "double", teams: t.teams.map(withPlayers) };
 }
 
 /**
@@ -336,11 +341,13 @@ export async function updateTeamPlayers(
 
 export async function resetTournament(
   teamCount: TeamCount,
+  format: Format,
   teams: Team[],
 ): Promise<Tournament> {
   const be = getBackend();
   await be.reset({
     teamCount,
+    format,
     phase: "live",
     teams,
     updatedAt: Date.now(),

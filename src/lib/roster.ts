@@ -1,4 +1,4 @@
-import type { Player, Team, TeamCount, Tournament } from "./types";
+import type { Format, Player, Team, TeamCount, Tournament } from "./types";
 
 /**
  * Known day-of roster. Confirmed partnered teams are hard-coded so a fresh
@@ -68,9 +68,12 @@ export function defaultTeams(count: TeamCount): Team[] {
 export function defaultTournament(): Tournament {
   // 7 confirmed pairs + 3 known solos; solos get partners assigned day-of.
   const count: TeamCount = 10;
+  // Indoors on two courts, so start on the shorter format. Switchable on /setup.
+  const format: Format = "single";
   return {
     version: 1,
     teamCount: count,
+    format,
     phase: "setup",
     teams: defaultTeams(count),
     results: {},

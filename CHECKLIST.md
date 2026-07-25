@@ -29,6 +29,10 @@ Target: **Saturday, July 25**. Do steps 1–4 the night before; steps 5–7 on t
 
 - [ ] **5. Lock the roster.** Count who's actually there, resolve the solo players
   (see the pairing rule below), then `/setup`:
+  - [ ] Pick the **format**. Indoors / 2 courts / tight on time →
+        **Single + Consolation** (14 matches at 10 teams, ~7 rounds). Plenty of
+        courts and time → **Double Elimination** (19 matches, ~11 rounds).
+        The page prints the match count and round estimate as you toggle.
   - [ ] Set team count (**8 / 9 / 10**).
   - [ ] Type/fix every team name — a merged pair like **"Player A + Player B"** is fine.
   - [ ] Order by seed (top seed = Seed 1), or hit **Shuffle**. **Start tournament.**
@@ -48,11 +52,25 @@ The bracket needs an **even number of unpaired people.**
 - **1 solo** → they can't be a team alone; grab any willing +1 or make them a sub → **8**.
 - **0 / 2 solos** → pair up → **9**.
 
+## Running it on 2 courts (Single + Consolation)
+- **Up Next** splits into **For the title** and **Consolation**. Feed the title games
+  onto courts first — the champion is decided by the main bracket alone.
+- Early on there are usually **4 title games ready at once** (the two play-ins plus the
+  two quarterfinals between byes), so both courts stay busy without touching
+  consolation.
+- Once the title games run dry waiting on a result, fill the open court from
+  **Consolation**. Running the whole main bracket first is fine too — the Final can be
+  played, the confetti fired, and consolation finished afterwards (or dropped).
+- Only possible rematch: a play-in pair can meet again in the **consolation final**.
+  Call it a revenge match.
+
 ## If something's weird mid-tournament
 - Wrong result entered → tap **Edit result** on that match; downstream games recompute.
 - Someone's stuck on an old view → just refresh (it re-polls every ~1.5s anyway).
-- Grand final: if the **losers-bracket** team wins, a **Reset** match appears
-  automatically (they have to be beaten twice). Winner triggers the confetti. 🏆
+- Switching format mid-event means a rebuild — it **clears every score**. Decide before
+  the first serve.
+- Double elim only — grand final: if the **losers-bracket** team wins, a **Reset** match
+  appears automatically (they have to be beaten twice). Winner triggers the confetti. 🏆
 
 ## Gotchas
 - ⚠️ **No Upstash = no sync.** Without it, each phone can end up on its own copy.
